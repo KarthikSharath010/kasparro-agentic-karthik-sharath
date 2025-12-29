@@ -8,6 +8,11 @@ ApexAgent is a production-grade agentic automation system designed to transform 
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-1.5%20Flash-orange?logo=google-gemini)
 
 ---
+## 🌐 Live Application
+The ApexAgent pipeline is fully deployed and accessible via Streamlit Cloud.
+[**🚀 Launch Live Demo**](https://kasparro-agentic-karthik-sharath.streamlit.app)
+
+---
 
 ## 🏗️ System Architecture
 
