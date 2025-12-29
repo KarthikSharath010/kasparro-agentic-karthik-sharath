@@ -1,0 +1,37 @@
+{
+  "product_name": "GlowBoost Vitamin C Serum",
+  "category": "Skincare",
+  "price": 29.99,
+  "size": "30ml",
+  "target_audience": ["Dull Skin", "Anti-Aging", "Hyperpigmentation"],
+  "ingredients": [
+    "Vitamin C (20% L-Ascorbic Acid)",
+    "Vitamin E",
+    "Hyaluronic Acid",
+    "Ferulic Acid",
+    "Glycerin",
+    "Aqua"
+  ],
+  "claims": [
+    "Brightens skin tone in 7 days",
+    "Reduces appearance of fine lines",
+    "Hydrates and plumps skin",
+    "Cruelty-free and Vegan"
+  ],
+  "usage_instructions": "Apply 3-4 drops to clean, dry face every morning. Follow with moisturizer and sunscreen.",
+  "safety_warnings": "Patch test before use. Discontinue if irritation occurs. Keep out of sunlight.",
+  "faqs_raw": [
+    {
+      "q": "Can I use this with Retinol?",
+      "a": "It is best to use Vitamin C in the morning and Retinol at night to avoid irritation."
+    },
+    {
+      "q": "Is it suitable for sensitive skin?",
+      "a": "Yes, but we recommend a patch test due to the potency of Vitamin C."
+    },
+    {
+      "q": "Does it oxidize?",
+      "a": "Our formula uses stabilized L-Ascorbic acid and dark glass packaging to minimize oxidation."
+    }
+  ]
+}
