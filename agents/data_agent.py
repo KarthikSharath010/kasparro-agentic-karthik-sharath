@@ -1,58 +1,37 @@
 import json
-import os
-import google.generativeai as genai
+from agents.base import BaseAgent
 
-class DataAgent:
-    def __init__(self, source_path="library/glowboost.json"):
-        self.source_path = source_path
-        try:
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-        except:
-            self.model = None
+class DataAgent(BaseAgent):
+    def __init__(self, state):
+        super().__init__("DataAgent", state)
 
-    def load_glowboost_data(self):
-        """Loads the authoritative GlowBoost dataset."""
-        if not os.path.exists(self.source_path):
-            return None
-        with open(self.source_path, "r") as f:
-            return json.load(f)
-
-    def generate_competitor_data(self):
-        """
-        Generates 'Product B' for comparison using LLM.
-        """
-        # Fallback if no LLM
-        fallback = {
-            "product_name": "RadianceRetinol Night Serum (Fallback)",
-            "category": "Skincare",
-            "price": 45.00,
-            "size": "30ml",
-            "ingredients": ["Retinol", "Vitamin E", "Aqua"],
-            "claims": ["Anti-aging"]
-        }
+    def execute(self):
+        # 1. Load Source Data
+        if not self.state.get_context("glowboost_data"):
+            self.state.log_event(self.name, "Starting data ingestion...")
+            glowboost_data = {
+                "product_name": "GlowBoost Vitamin C Serum",
+                "ingredients": ["Vitamin C (20%)", "Vitamin E", "Hyaluronic Acid", "Ferulic Acid"],
+                "benefits": ["Brightens skin", "Reduces fine lines", "Hydrates", "Protects against UV"],
+                "price": 29.99
+            }
+            self.state.update_context("glowboost_data", glowboost_data)
+            self.state.log_event(self.name, "Loaded GlowBoost data successfully.")
         
-        if not self.model:
-            return fallback
-
-        prompt = """
-        Generate a fictional competitor skincare product JSON to compare against a Vitamin C Serum.
-        It should be a "Retinol" product.
-        Format:
-        {
-            "product_name": "Str",
-            "category": "Skincare",
-            "price": Float,
-            "size": "30ml",
-            "ingredients": ["List", "Of", "5", "Ingredients"],
-            "claims": ["List", "Of", "3", "Claims"]
-        }
-        Return ONLY valid JSON.
-        """
-        
-        try:
-            response = self.model.generate_content(prompt)
-            # Simple cleaning to ensure JSON parsing
-            clean_text = response.text.strip().lstrip("```json").rstrip("```")
-            return json.loads(clean_text)
-        except:
-            return fallback
+        # 2. Generate Competitor Data
+        if not self.state.get_context("competitor_data"):
+            if self.state.get_context("simulation_mode"):
+                self.state.log_event(self.name, "[Sim] Generating competitor data...")
+                competitor_name = "LuminaEssence Brightening Drops"
+                self.state.update_context("competitor_data", {"name": competitor_name})
+                self.state.log_event(self.name, f"Generated Competitor: {competitor_name}")
+            else:
+                # Real LLM Call
+                self.state.log_event(self.name, "Generating competitor data...")
+                prompt = "Generate a fictional competitor product to 'GlowBoost Vitamin C Serum'. Return ONLY the name."
+                competitor_name = self.call_llm(prompt)
+                if competitor_name:
+                    self.state.update_context("competitor_data", {"name": competitor_name.strip()})
+                    self.state.log_event(self.name, f"Generated Competitor: {competitor_name.strip()}")
+                else:
+                    self.state.log_event(self.name, "Failed to generate competitor.")

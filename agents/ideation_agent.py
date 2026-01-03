@@ -1,52 +1,44 @@
-import google.generativeai as genai
-import os
-from core.logic_blocks import categorize_question
+import json
+from agents.base import BaseAgent
 
-class IdeationAgent:
-    def __init__(self):
-        self.model = None
-        self.init_error = None
-        # Assumes GEMINI_API_KEY is found in environment or previously set
-        try:
-            self.model = genai.GenerativeModel('gemini-flash-latest')
-        except Exception as e:
-            self.init_error = str(e)
-            self.model = None
+class IdeationAgent(BaseAgent):
+    def __init__(self, state):
+        super().__init__("IdeationAgent", state)
 
-    def generate_questions(self, product_data):
-        """Generates 15+ candidate questions based on product data."""
-        if not self.model:
-            error_msg = f"Error: Gemini API key not configured/invalid. Details: {self.init_error}"
-            return [error_msg]
-        
-        context = f"""
-        Product: {product_data['product_name']}
-        Category: {product_data['category']}
-        Usage: {product_data.get('usage_instructions', '')}
-        Safety: {product_data.get('safety_warnings', '')}
-        
-        Generate 20 distinct customer questions people might ask about this product.
-        Return ONLY the questions, one per line.
-        """
-        
-        try:
-            response = self.model.generate_content(context)
-            questions = [q.strip("- ").strip() for q in response.text.split("\n") if q.strip()]
-            return questions
-        except Exception as e:
-            return [f"Error generating questions: {e}"]
+    def execute(self):
+        # 1. Brainstorm Questions
+        if not self.state.get_context("raw_questions"):
+            if self.state.get_context("simulation_mode"):
+                self.state.log_event(self.name, "[Sim] Brainstorming questions...")
+                questions = "1. How often should I use it?\n2. Is it safe for sensitive skin?\n3. Can I use it with Retinol?"
+                self.state.update_context("raw_questions", questions)
+            else:
+                self.state.log_event(self.name, "Starting ideation phase...")
+                prompt = "Generate 5 common customer questions about Vitamin C Serums. Return numbered list."
+                response = self.call_llm(prompt)
+                if response:
+                    self.state.update_context("raw_questions", response)
+                else:
+                    return
 
-    def process_faqs(self, raw_questions):
-        """Categorizes raw questions into the structured format."""
-        categorized = {
-            "Usage": [],
-            "Safety": [],
-            "Science": [],
-            "General": []
-        }
-        
-        for q in raw_questions:
-            cat = categorize_question(q)
-            categorized[cat].append(q)
-            
-        return categorized
+        # 2. Structure/Categorize
+        if not self.state.get_context("structured_faqs"):
+            if self.state.get_context("simulation_mode"):
+                self.state.log_event(self.name, "[Sim] Categorizing questions...")
+                structured = {
+                    "categories": [
+                        {"name": "Usage", "questions": ["How often should I use it?", "Can I use it with Retinol?"]},
+                        {"name": "Suitability", "questions": ["Is it safe for sensitive skin?"]}
+                    ]
+                }
+                self.state.update_context("structured_faqs", structured)
+            else:
+                raw = self.state.get_context("raw_questions")
+                prompt = f"Categorize these questions into Usage, Benefits, Suitability. JSON: {{ 'categories': [ {{ 'name': '...', 'questions': [...] }} ] }}\n{raw}"
+                response_json = self.call_llm(prompt, json_mode=True)
+                if response_json:
+                    try:
+                        data = json.loads(response_json)
+                        self.state.update_context("structured_faqs", data)
+                    except:
+                        pass

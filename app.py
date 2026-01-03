@@ -1,325 +1,372 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import os
 import time
+import html
+import textwrap
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Core Imports
+from core.state import SharedState
+from core.orchestrator import ApexSupervisor
 
-# Import our new Agents
+# Agent Imports
 from agents.data_agent import DataAgent
 from agents.ideation_agent import IdeationAgent
 from agents.content_agent import ContentAgent
+from agents.validator_agent import ValidatorAgent
 
 # --- Configuration ---
 st.set_page_config(
-    page_title="ApexAgent | Content Pipeline",
+    page_title="ApexAgent",
     page_icon="🤖",
     layout="wide",
 )
 
-# --- Custom CSS for 'Geometric Dark' Theme ---
+load_dotenv()
+
+# --- Custom CSS (Refined Geometric Dark) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
     
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        background-color: #050505; /* Deep Black */
-        color: #FFFFFF;
-    }
-
-    /* Minimalist Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: #000000;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    /* Hero Title Styling */
-    h1 {
-        font-weight: 800 !important;
-        font-size: 3.5rem !important;
-        letter-spacing: -1.5px;
-        color: #FFFFFF !important;
-        background: none !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-        margin-bottom: 0px !important;
-    }
-    
-    .subtitle {
-        font-size: 1.2rem;
-        color: #888888;
-        font-weight: 300;
-        margin-bottom: 2rem;
-    }
-
-    /* Cards (Wireframe Style) */
-    div[data-testid="stExpander"], div[data-testid="stContainer"] {
+        font-family: 'Outfit', sans-serif;
         background-color: #0A0A0A;
-        border: 1px solid #333333;
-        border-radius: 0px; /* Geometric/Sharp */
-        box-shadow: none;
+        color: #E0E0E0;
     }
     
-    div[data-testid="stExpander"]:hover, div[data-testid="stContainer"]:hover {
-        border-color: #FF8800; /* Deep Orange Accent */
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #050505;
+        border-right: 1px solid #1A1A1A;
     }
-
-    /* Accent Button - Orange Pill */
+    
+    /* Headers */
+    h1, h2, h3 {
+        font-weight: 700 !important;
+        letter-spacing: -0.5px;
+        color: #FFFFFF !important;
+    }
+    
+    h1 {
+        font-size: 2.5rem !important;
+        background: linear-gradient(90deg, #FFFFFF, #FF8800);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    /* Buttons */
     div.stButton > button {
-        background-color: #FF8800;
+        background: linear-gradient(135deg, #FF8800 0%, #FF6600 100%);
         color: #000000;
+        border-radius: 8px;
+        font-weight: 600;
         border: none;
-        border-radius: 50px;
-        font-weight: 700;
-        padding: 0.6rem 2rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
     }
     div.stButton > button:hover {
-        background-color: #FFA500;
-        color: #000000;
-        box-shadow: 0 0 20px rgba(255, 136, 0, 0.4);
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 136, 0, 0.3);
+        color: #000000;
     }
-    
-    /* Code Blocks - Stealth */
-    code {
-        color: #FF8800 !important;
-        background-color: #111111 !important;
-        border: 1px solid #222222;
+
+    /* Inputs (Neat & Dark) */
+    div[data-testid="stTextInput"] input {
+        background-color: #111 !important;
+        border: 1px solid #333 !important;
+        color: #EEE !important;
+        border-radius: 8px !important;
     }
-    
-    /* Validated Badges */
-    span[data-testid="stCaption"] {
-        color: #666666 !important;
-    }
-    
-    /* Alignment Fixes */
-    .block-container {
-        padding-top: 2rem !important; /* Reduced from 5rem as requested */
-    }
-    div[data-testid="stSidebarUserContent"] {
-        padding-top: 2rem !important;
-    }
-    
-    /* Text Input Fixes */
-    div[data-baseweb="input"] {
-        background-color: #111111 !important;
-        border: 1px solid #333333 !important;
-        border-radius: 8px !important; 
-        color: white !important;
-    }
-    div[data-baseweb="input"]:focus-within {
+    div[data-testid="stTextInput"] input:focus {
         border-color: #FF8800 !important;
+        box-shadow: 0 0 0 1px #FF8800 !important;
     }
-    input {
-        color: white !important;
+    label[data-testid="stWidgetLabel"] p {
+        font-size: 0.85rem;
+        color: #888;
+        font-weight: 500;
+        letter-spacing: 0.5px;
     }
-    /* Hide the 'Press Enter to Apply' overlay which overlaps content */
-    div[data-testid="InputInstructions"] {
-        display: none !important;
+
+    /* Logs Container */
+    .log-container {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        background-color: #0F0F0F;
+        border: 1px solid #222;
+        border-radius: 8px;
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column; 
+    }
+    .log-entry {
+        padding: 6px 8px;
+        border-bottom: 1px solid #1A1A1A;
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+    }
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+    .log-time { color: #666; min-width: 65px; font-size: 0.8rem; }
+    .log-source { color: #FF8800; font-weight: bold; min-width: 110px; }
+    .log-msg { color: #DDD; word-break: break-all; }
+
+    /* Cards/Expanders */
+    .stExpander {
+        border: 1px solid #222;
+        border-radius: 8px;
+        background-color: #111;
+    }
+    
+    /* JSON/Code */
+    code {
+        font-family: 'JetBrains Mono', monospace !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("<h2 style='font-size: 2.4rem; margin-bottom: 0; padding-top: 0;'>ApexAgent.</h2>", unsafe_allow_html=True)
-    st.caption("v1.2.0")
+    st.markdown("<h1>🤖 ApexAgent</h1>", unsafe_allow_html=True)
+    st.caption("Autonomous System v2.1")
     
     st.markdown("---")
     
-    api_key = st.text_input("API Key", type="password", placeholder="Enter Gemini Key")
-    if api_key:
-        os.environ["GEMINI_API_KEY"] = api_key
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
+    # SIMULATION MODE TOGGLE
+    sim_mode = st.toggle("Enable Simulation Mode", value=False, help="Run without API Key using pre-calculated data.")
+    
+    if not sim_mode:
+        # Persistent API Key Input (GEMINI)
+        api_key_input = st.text_input("Gemini API Key", type="password")
+        
+        if api_key_input:
+            os.environ["GEMINI_API_KEY"] = api_key_input
+        elif "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
     else:
-        # Clear stale key from session if input is cleared
-        # This prevents the 'no error' issue when removing a manually entered key
-        if "GEMINI_API_KEY" in os.environ:
-             # Only delete if it matches the current process state (simple check)
-             # But safer to just reload from .env to be sure
-             del os.environ["GEMINI_API_KEY"]
-        
-        # Reload from .env (source of truth if no manual input)
-        load_dotenv()
-        if os.environ.get("GEMINI_API_KEY"):
-            import google.generativeai as genai
-            genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-
-# --- Main Page ---
-# Hero Section
-st.markdown("<h1>Designing a Better<br>Workflow Today.</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Autonomous agents transforming raw ideas into tangible realities.</p>", unsafe_allow_html=True)
-st.markdown("""
-<div style="margin-bottom: 2rem;">
-This system uses a <strong>Multi-Agent Architecture</strong>:
-<br>1. <strong>Data Agent</strong>: Ingests Source JSON & Models Competitor.
-<br>2. <strong>Ideation Agent</strong>: Generates & Categorizes FAQs.
-<br>3. <strong>Content Agent</strong>: Assembles final artifacts.
-</div>
-""", unsafe_allow_html=True)
-
-# --- Pipeline Logic with Persistence ---
-if st.button("🚀 Run Pipeline", type="primary"):
-    # 0. Validation: Check API Key
-    if not os.environ.get("GEMINI_API_KEY"):
-        st.error("⛔ **Missing API Key**: Please enter your Gemini API Key in the sidebar to proceed.")
-        st.stop()
-
-    start_time = time.time()
-    # --- Orchestration Container ---
-    placeholder = st.empty()
+        st.info("⚡ Running in Simulation Mode. No API Key required.")
     
-    with placeholder.container():
-        st.info("System Initialized. Starting Agents...")
-        
-        # --- Architecture Visualization (DAG) ---
-        with st.expander("🏗️ Real-Time Architecture Flow", expanded=True):
-            st.graphviz_chart("""
-                digraph {
-                    rankdir=LR;
-                    bgcolor="transparent";
-                    node [shape=box, style="filled,rounded", fillcolor="#262626", color="#555555", penwidth=1.5, fontcolor="#FFFFFF", fontname="Sans"];
-                    edge [color="#888888", penwidth=1.2, arrowsize=0.8];
-                    
-                    Data [label="📦 Data Agent", fillcolor="#1E1E1E"];
-                    Ideation [label="💡 Ideation Agent", fillcolor="#1E1E1E"];
-                    Content [label="📝 Content Agent", fillcolor="#1E1E1E"];
-                    
-                    Data -> Ideation [label="Context", fontcolor="#AAAAAA", fontsize=10];
-                    Data -> Content;
-                    Ideation -> Content;
-                }
-            """)
+    st.markdown("### 🧠 Cortex State")
+    if "shared_state" in st.session_state:
+        state = st.session_state.shared_state
+        ctx = state.get_all().get("context", {})
+        if ctx:
+            st.metric("Context Keys", len(ctx))
+            with st.expander("View Keys", expanded=False):
+                 st.code("\n".join(list(ctx.keys())), language="text")
+        else:
+            st.info("System Initialized")
 
-        # 1. Data Agent
-        with st.spinner("📦 Data Agent: Ingesting & Modeling..."):
-            data_agent = DataAgent()
-            glowboost = data_agent.load_glowboost_data()
-            competitor = data_agent.generate_competitor_data()
-            time.sleep(0.8) # Simulating latency for effect
+# --- Main App ---
+col_header, col_status = st.columns([3, 1])
+with col_header:
+    st.markdown("## 📡 Mission Control")
+    st.caption("Monitoring Supervisor Reasoning & Agent Delegation")
+
+# Initialize System in Session State
+if "shared_state" not in st.session_state:
+    st.session_state.shared_state = SharedState()
+
+state = st.session_state.shared_state
+
+# --- Execution Controls ---
+# Small Button
+col_btn, col_space = st.columns([1, 4])
+with col_btn:
+    if st.button("🚀 Start Mission", type="primary"):
+        # Validation Logic
+        if not sim_mode and not os.environ.get("GEMINI_API_KEY"):
+            st.error("⚠️ Missing Gemini API Key.")
+            st.toast("Please enter your Gemini API Key or Enable Simulation Mode.", icon="⚠️")
+        else:
+            # Re-initialize
+            st.session_state.shared_state = SharedState()
+            state = st.session_state.shared_state
             
-        if not glowboost:
-            st.error("Error: Source data not found!")
-            st.stop()
+            # Update Context with Sim Mode
+            state.update_context("simulation_mode", sim_mode)
             
-        # 2. Ideation Agent
-        with st.spinner("💡 Ideation Agent: Brainstorming Questions..."):
-            ideation_agent = IdeationAgent()
-            raw_questions = ideation_agent.generate_questions(glowboost)
+            # Re-init Supervisor/Agents
+            supervisor = ApexSupervisor(state)
+            supervisor.register_agent("DataAgent", DataAgent(state))
+            supervisor.register_agent("IdeationAgent", IdeationAgent(state))
+            supervisor.register_agent("ContentAgent", ContentAgent(state))
+            supervisor.register_agent("ValidatorAgent", ValidatorAgent(state))
             
-            # Error Handling: Check if Ideation failed (API Key issue)
-            if raw_questions and "Error" in raw_questions[0]:
-                st.error(f"⛔ Ideation Failed: {raw_questions[0]}")
-                st.stop()
+            st.session_state.is_running = True
+            st.rerun()
+
+if "is_running" not in st.session_state:
+    st.session_state.is_running = False
+
+# --- Live Log Display (Persistent) ---
+with st.container():
+    st.subheader("Agent Logs")
+    
+    log_messages = state._state["messages"]
+    
+    if log_messages:
+        # Standard Chronological Order
+        log_html = "<div class='log-container'>"
+        for entry in log_messages:
+            safe_msg = html.escape(entry['message'])
+            safe_source = html.escape(entry['source'])
+            
+            # NO INDENTATION in the HTML string to prevent markdown code block
+            log_html += f"<div class='log-entry'><span class='log-time'>{entry['timestamp']}</span><span class='log-source'>{safe_source}</span><span class='log-msg'>{safe_msg}</span></div>"
+            
+        log_html += "</div>"
+        st.markdown(log_html, unsafe_allow_html=True)
+    else:
+        st.info("Waiting for mission start...")
+
+# --- Execution Loop ---
+if st.session_state.is_running:
+    # RE-INITIALIZE Agents
+    supervisor = ApexSupervisor(state)
+    supervisor.register_agent("DataAgent", DataAgent(state))
+    supervisor.register_agent("IdeationAgent", IdeationAgent(state))
+    supervisor.register_agent("ContentAgent", ContentAgent(state))
+    supervisor.register_agent("ValidatorAgent", ValidatorAgent(state)) 
+
+    with st.spinner("Agents working..."):
+        keep_going = supervisor.run_step()
+    
+    time.sleep(1.0) 
+    
+    if not keep_going:
+        st.session_state.is_running = False
+        st.success("Mission Cycle Ended.")
+    
+    st.rerun()
+
+# --- Artifact Display ---
+if state.get_context("validation_report"):
+    st.markdown("---")
+    st.subheader("📦 Generated Artifacts")
+
+    if state.get_context("validation_report") == "PASS":
+        artifacts = state.get_all()["artifacts"]
+        
+        tab1, tab2, tab3, tab4 = st.tabs(["👁️ Product Page Preview", "📄 Product JSON", "❓ FAQ JSON", "⚖️ Comparison JSON"])
+        
+        with tab1:
+            pp = artifacts.get("product_page.json", {})
+            if pp:
+                # FIX: Access call_to_action correctly from nested hero_section
+                cta = pp.get('hero_section', {}).get('call_to_action', 'Buy Now')
                 
-            structured_faqs = ideation_agent.process_faqs(raw_questions)
-            time.sleep(1.2)
-            
-        # Agent Feedback (So it doesn't just disappear)
-        st.toast(f"💡 Brainstormed {len(raw_questions)} Questions!", icon="✅")
-            
-        # 3. Content Agent
-        with st.spinner("� Content Agent: Assembling Artifacts..."):
-            content_agent = ContentAgent()
-            faq_json = content_agent.build_faq_json(structured_faqs)
-            product_json = content_agent.build_product_page_json(glowboost)
-            comparison_json = content_agent.build_comparison_page_json(glowboost, competitor)
-            time.sleep(0.5)
-            
-        # Store in Session State for Persistence
-        st.session_state['pipeline_results'] = {
-            'glowboost': glowboost,
-            'competitor': competitor,
-            'raw_questions': raw_questions,
-            'structured_faqs': structured_faqs,
-            'faq_json': faq_json,
-            'product_json': product_json,
-            'comparison_json': comparison_json
-        }
+                preview_html = f"""
+                    <html>
+                    <head>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap');
+                        body {{
+                            font-family: 'Outfit', sans-serif;
+                            background-color: #151515;
+                            color: #EEE;
+                            padding: 2rem;
+                            margin: 0;
+                        }}
+                        .container {{
+                            max-width: 1000px;
+                            margin: 0 auto;
+                            border: 1px solid #333;
+                            border-radius: 12px;
+                            background: #151515;
+                            padding: 3rem;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+                        }}
+                        h1 {{ color: #FF8800; font-size: 3rem; margin: 0.5rem 0; letter-spacing: -1px; }}
+                        h2 {{ color: #FFF; font-size: 3.5rem; margin: 1.5rem 0; line-height: 1.2; }}
+                        h3 {{ color: #FF8800; margin-top: 0; }}
+                        .btn {{
+                            display: inline-block;
+                            background: #FF8800;
+                            color: #000;
+                            padding: 15px 40px;
+                            border-radius: 50px;
+                            font-size: 1.2rem;
+                            font-weight: 800;
+                            cursor: pointer;
+                            box-shadow: 0 0 20px rgba(255,136,0,0.4);
+                            text-decoration: none;
+                        }}
+                        .grid {{
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 3rem;
+                            margin-top: 2rem;
+                        }}
+                        .card {{
+                            background: #202020;
+                            padding: 2rem;
+                            border-radius: 12px;
+                            border: 1px solid #333;
+                        }}
+                        ul {{ line-height: 1.8; color: #DDD; padding-left: 1.2rem; }}
+                        strong {{ color: #FFF; }}
+                    </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div style="text-align: center; border-bottom: 1px solid #333; padding-bottom: 2rem; margin-bottom: 2rem;">
+                                <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: #888; margin-bottom: 1rem;">Official Store</div>
+                                <h1>{pp.get('meta', {}).get('title')}</h1>
+                                <p style="color: #AAA; font-size: 1.2rem; max-width: 600px; margin: 0 auto;">{pp.get('meta', {}).get('description')}</p>
+                            </div>
+                            
+                            <div style="text-align: center; margin-bottom: 4rem;">
+                                <h2>{pp.get('hero_section', {}).get('headline')}</h2>
+                                <a class="btn">
+                                    {cta} — ${pp.get('specifications', {}).get('price')}
+                                </a>
+                            </div>
+                            
+                            <div class="grid">
+                                <div class="card">
+                                    <h3>✨ Key Benefits</h3>
+                                    <ul>
+                                        {"".join([f"<li>{item}</li>" for item in pp.get('hero_section', {}).get('key_benefits', [])])}
+                                    </ul>
+                                </div>
+                                <div class="card">
+                                    <h3>🔬 Specifications</h3>
+                                    <p style="margin-bottom: 1rem;"><strong>Volume:</strong> <span style="color: #AAA;">{pp.get('specifications', {}).get('volume')}</span></p>
+                                    <div>
+                                        <strong>Ingredients:</strong>
+                                        <div style="margin-top: 0.5rem; color: #AAA; font-size: 0.95rem; line-height: 1.6;">
+                                            {", ".join(pp.get('specifications', {}).get('ingredients', []))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                """
+                components.html(preview_html, height=1000, scrolling=True)
+            else:
+                st.warning("Product page artifact missing.")
 
-# --- Check for Results in Session State ---
-if 'pipeline_results' in st.session_state:
-    results = st.session_state['pipeline_results']
-    
-    # Unpack for easy access
-    glowboost = results['glowboost']
-    competitor = results['competitor']
-    raw_questions = results['raw_questions']
-    structured_faqs = results['structured_faqs']
-    faq_json = results['faq_json']
-    product_json = results['product_json']
-    comparison_json = results['comparison_json']
-
-    st.success("✨ Pipeline Complete! All artifacts generated.")
-
-    # --- Restore Agent Reasoning (Persisted) ---
-    with st.expander("👁️ View Data Agent Reasoning", expanded=False):
-        st.markdown(f"**Ingested**: `{glowboost['product_name']}`")
-        if 'claims' in glowboost and glowboost['claims']:
-             st.markdown(f"**Key Claim**: _{glowboost['claims'][0]}_")
-        st.markdown(f"**Competitor Model**: `{competitor['product_name']}` (Generated for comparison)")
-        st.success("✅ Dataset Validated")
-
-    with st.expander("👁️ View Ideation Agent Reasoning", expanded=False):
-        st.markdown("**Prompt Context**:")
-        # Safe access to claims for display
-        claim_preview = glowboost['claims'][0] if 'claims' in glowboost and glowboost['claims'] else "N/A"
-        st.code(f"Product: {glowboost['product_name']}\nClaims: {claim_preview}...", language="text")
+        with tab2:
+            st.download_button("⬇️ Download JSON", json.dumps(artifacts.get("product_page.json"), indent=2), "product_page.json", "application/json")
+            st.json(artifacts.get("product_page.json"))
         
-        st.markdown(f"**Output**: Generated {len(raw_questions)} candidates.")
-        st.success(f"✅ Categories Mapped: {', '.join(structured_faqs.keys())}")
+        with tab3:
+            st.download_button("⬇️ Download JSON", json.dumps(artifacts.get("faq.json"), indent=2), "faq.json", "application/json")
+            st.json(artifacts.get("faq.json"))
 
-    # --- Results & Insights Display ---
-    st.divider()
-    
-    # Insights "Logic Block" Visualization
-    st.subheader("🧠 Engineered Insights")
-    st.caption("Deterministic Logic Blocks applied to data.")
-    
-    with st.container(border=True):
-        ic1, ic2 = st.columns(2)
-        with ic1:
-            st.markdown("##### 📉 Price Optimization Logic")
-            p_a = glowboost['price']
-            p_b = competitor['price']
-            diff = abs(p_a - p_b)
-            # Show the actual code used
-            st.code(f"diff = abs({p_a} - {p_b})", language="python")
-            st.markdown(f"**Conclusion**: _{glowboost['product_name']}_ is **${diff:.2f}** cheaper.")
-        with ic2:
-            st.markdown("##### 🧪 Ingredient Overlap Analysis")
-            common = set(glowboost['ingredients']).intersection(set(competitor['ingredients']))
-            st.code(f"common = set(a) & set(b)\n# Found {len(common)} items", language="python")
-            st.markdown(f"**Overlap Score**: {len(common)}/{len(glowboost['ingredients'])}")
-
-    st.divider()
-
-    # Artifacts
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.subheader("📄 Product Page")
-        st.caption("JSON-Schema Validated ✅")
-        with st.expander("View JSON Source"):
-            st.code(json.dumps(product_json, indent=2), language="json")
-        st.download_button("Download JSON", data=json.dumps(product_json, indent=2), file_name="product_page.json", mime="application/json")
-        
-    with col2:
-        st.subheader("❓ FAQ Data")
-        st.caption("JSON-Schema Validated ✅")
-        with st.expander("View JSON Source"):
-            st.code(json.dumps(faq_json, indent=2), language="json")
-        st.download_button("Download JSON", data=json.dumps(faq_json, indent=2), file_name="faq.json", mime="application/json")
-
-    with col3:
-        st.subheader("⚖️ Comparison")
-        st.caption("JSON-Schema Validated ✅")
-        with st.expander("View JSON Source"):
-            st.code(json.dumps(comparison_json, indent=2), language="json")
-        st.download_button("Download JSON", data=json.dumps(comparison_json, indent=2), file_name="comparison_page.json", mime="application/json")
+        with tab4:
+            st.download_button("⬇️ Download JSON", json.dumps(artifacts.get("comparison_page.json"), indent=2), "comparison_page.json", "application/json")
+            st.json(artifacts.get("comparison_page.json"))
+            
+    elif state.get_context("validation_report") == "FAIL":
+        st.error("Trace Validation Failed. Check logs for critique.")
