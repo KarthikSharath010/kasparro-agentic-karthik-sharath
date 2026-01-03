@@ -1,4 +1,5 @@
 # Kasparro Content Generation Pipeline Documentation
+<!-- Updated for v2.1 -->
 
 ## 1. System Architecture
 

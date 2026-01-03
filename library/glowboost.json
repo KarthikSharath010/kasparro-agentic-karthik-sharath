@@ -1,9 +1,14 @@
 {
   "product_name": "GlowBoost Vitamin C Serum",
+  "dataset_version": "2.1",
   "category": "Skincare",
   "price": 29.99,
   "size": "30ml",
-  "target_audience": ["Dull Skin", "Anti-Aging", "Hyperpigmentation"],
+  "target_audience": [
+    "Dull Skin",
+    "Anti-Aging",
+    "Hyperpigmentation"
+  ],
   "ingredients": [
     "Vitamin C (20% L-Ascorbic Acid)",
     "Vitamin E",
