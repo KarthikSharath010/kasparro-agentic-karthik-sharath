@@ -129,6 +129,23 @@ st.markdown("""
     code {
         font-family: 'JetBrains Mono', monospace !important;
     }
+    
+    /* Remove Default Streamlit Padding */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    /* Reduce Sidebar Top Padding */
+    section[data-testid="stSidebar"] .block-container {
+        padding-top: 1rem !important;
+    }
+    
+    section[data-testid="stSidebar"] h1 {
+        margin-top: -1rem !important;
+        padding-top: 0 !important;
+        line-height: 1.2 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
