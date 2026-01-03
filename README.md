@@ -1,96 +1,81 @@
-# 🤖 ApexAgent: Modular Content Generation Pipeline
-### **Autonomous Multi-Agent System for Structured Market Intelligence**
+# 🤖 ApexAgent: Autonomous Content Pipeline v2.1
+### **Orchestrated Multi-Agent System for Market Intelligence**
 
-ApexAgent is a production-grade agentic automation system designed to transform raw, unstructured product data into high-fidelity, machine-readable marketing assets. Built for the Kasparro Applied AI Engineering Challenge, it demonstrates the power of modular agent orchestration over monolithic prompting.
+ApexAgent is a production-grade autonomous system that transforms raw product data into high-fidelity, machine-readable marketing assets. It features a robust **Supervisor-Worker** architecture, ensuring deterministic execution and zero-hallucination outputs.
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python)
 ![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-1.5%20Flash-orange?logo=google-gemini)
+![Mode](https://img.shields.io/badge/Simulation%20Mode-Enabled-green)
 
 ---
-## 🌐 Live Application
-The ApexAgent pipeline is fully deployed and accessible via Streamlit Cloud.
-[**🚀 Launch Live Demo**](https://kasparro-agentic-karthik-sharath.streamlit.app)
+
+## ⚡ Key Features
+
+### 1. **🎥 Simulation Mode (New)**
+Run the entire pipeline **without an API Key**.
+- Perfect for demos and testing.
+- Uses pre-calculated, high-quality data to simulate agent reasoning.
+- Generates valid artifacts instantly.
+
+### 2. **🧠 Supervisor Orchestration**
+Instead of a simple chain, an **ApexSupervisor** manages the state.
+- **Planning Phase**: Analyzes current context and decides which agent to call.
+- **Execution Phase**: Dispatches tasks to specific agents.
+- **Self-Correction**: If validation fails, the Supervisor re-plans and retries.
+
+### 3. **🛡️ Zero-Hallucination Policy**
+Every agent operates under strict context constraints, ensuring 100% factual alignment with the source data (`glowboost.json`).
 
 ---
 
 ## 🏗️ System Architecture
 
-The project follows a **Directed Acyclic Graph (DAG)** orchestration, ensuring clear boundaries and deterministic data flow between specialized agents.
+The project follows a **State-Machine Driven** architecture:
 
-### **The Multi-Agent Graph**
-1.  **Data Ingestion Agent**: Parses the "GlowBoost" source-of-truth and autonomously models a fictional competitor (e.g., *RadianceRetinol*) to facilitate comparative analysis.
-2.  **Ideation Agent**: Generates 20+ categorized consumer questions (Safety, Usage, Science) strictly bounded by the input dataset to prevent hallucinations.
-3.  **Content Assembly Agent**: The master orchestrator that triggers **Deterministic Logic Blocks** and maps processed data into validated JSON templates.
-
----
-
-## 🛠️ Key Engineering Features
-
-* **Deterministic Logic Blocks**: Moves beyond "creative writing" by implementing standalone Python functions for price delta calculations and ingredient overlap analysis.
-* **Zero-Hallucination Policy**: Every agent operates under a strict "Source-Only" context constraint, ensuring 100% factual alignment with the `glowboost.json` dataset.
-* **Template-First Design**: Utilizes a custom template engine to ensure all outputs strictly adhere to pre-defined JSON schemas, making them instantly machine-readable.
-* **System Observability**: Integrated "System Health" monitor in the UI tracks real-time **API Latency**, **Token Consumption**, and **Processing Costs**.
+1.  **🔍 DataAgent**: Ingests source-of-truth data and autonomously models competitor products.
+2.  **💡 IdeationAgent**: Brainstorms and structures customer questions (Safety, Usage, Science).
+3.  **📝 ContentAgent**: Assembles the final artifacts (`faq.json`, `product_page.json`) using strict schema enforcement.
+4.  **✅ ValidatorAgent**: Audits the outputs. If an artifact is missing or invalid, it rejects the step, triggering a re-run.
 
 ---
 
-## 📂 Project Structure
+## 🚀 Quick Start
 
-```text
-├── app.py                # Main Pipeline Orchestrator & UI
-├── agents/
-│   ├── data_agent.py     # Source Ingestion & Competitor Modeling
-│   ├── ideation_agent.py # Categorized FAQ Generation
-│   └── content_agent.py  # Final JSON Assembly & Validation
-├── core/
-│   ├── logic_blocks.py   # Deterministic Math & Comparison Logic
-│   └── templates.py      # JSON Schemas (FAQ, Product, Comparison)
-├── library/
-│   └── glowboost.json    # The "Source of Truth" Input Dataset
-└── docs/
-    └── projectdocumentation.md # Technical Design & Flowcharts
-
-```
-
----
-
-## 🚀 Installation & Setup
-
-1. **Clone the Repository**:
+### 1. Installation
 ```bash
-git clone [https://github.com/KarthikSharath010/kasparro-ai-agentic-content-generation-system-karthik-sharath.git](https://github.com/KarthikSharath010/kasparro-ai-agentic-content-generation-system-karthik-sharath.git)
+git clone https://github.com/KarthikSharath010/kasparro-ai-agentic-content-generation-system-karthik-sharath.git
 cd kasparro-ai-agentic-content-generation-system-karthik-sharath
-
-```
-
-
-2. **Install Dependencies**:
-```bash
 pip install -r requirements.txt
-
 ```
 
-
-3. **Configure API Access**:
-Add your `GOOGLE_API_KEY` to a `.env` file or enter it directly into the Streamlit sidebar.
-4. **Run the Pipeline**:
+### 2. Run the App
 ```bash
 streamlit run app.py
-
 ```
 
-
+### 3. Choose Your Mode
+*   **🔵 Live Mode**: Enter your `Gemini API Key` in the sidebar to use the live LLM.
+*   **🔴 Simulation Mode**: Toggle **"Enable Simulation Mode"** in the sidebar to run offline (Free/Demo).
 
 ---
 
-## 📊 Evaluation Criteria Alignment
+## 📂 Artifacts Generated
 
-* **Modularity (45%)**: Each agent has a single responsibility and no shared global state.
-* **Agent Quality (25%)**: Meaningful roles with strict input/output boundaries.
-* **Content Engineering (20%)**: Reusable logic blocks and a robust template engine.
-* **Data Integrity (10%)**: Validated JSON artifacts (FAQ, Product Page, Comparison).
+The system produces three key JSON artifacts, visible in the "Generated Artifacts" tab:
+
+*   `product_page.json`: Full schematic for an e-commerce landing page.
+*   `faq.json`: Structured question-answer pairs.
+*   `comparison_page.json`: Feature-by-feature comparison vs. competitor.
+
+---
+
+## 📊 Evaluation Metrics
+
+*   **Modularity**: 100% decoupling between Agents and State.
+*   **Reliability**: `try/except` blocks and fallback logic for all external calls.
+*   **User Experience**: "Geometric Dark" theme with real-time logs and visual feedback.
 
 ---
 
 **Developed for the Kasparro Applied AI Engineering Submission.**
-
